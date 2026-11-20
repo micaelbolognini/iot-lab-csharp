@@ -92,6 +92,15 @@ MQTT_CERT=$D/devices/gateway-py.crt MQTT_KEY=$D/devices/gateway-py.key \
 mpub -t fabrik/hall1/maskin3/kommando -m start       # någon flik
 ```
 
+C#-gatewayn gör samma jobb och kan köras i stället för Python-gatewayn:
+
+```bash
+MQTT_CERT=$D/devices/gateway-cs.crt MQTT_KEY=$D/devices/gateway-cs.key \
+  OPCUA_CERT=$D/opcua/gateway-cs.crt OPCUA_KEY=$D/opcua/gateway-cs.key \
+  OPCUA_TRUST=$D/opcua/pki/trusted \
+  dotnet run --project gateway-cs/Gateway
+```
+
 Se i flik 2:
 - `temperatur` kommer var 5:e sekund som min/max/avg, inte varje värde. **Edge-aggregering**.
 - `status` och `antal` är retained.
@@ -122,7 +131,7 @@ records ≈ DTO:er, `switch`-uttryck ≈ `match`, xUnit ≈ Pest.
 2. **Fler maskiner:** starta en Maskin4 i servern. Monitorn hanterar den utan ändring tack vare `fabrik/+/+/temperatur` — varför?
 3. **Deadband i gatewayn:** skicka `antal` högst en gång per sekund i stället för vid varje ändring.
 4. **Spara historik:** låt monitorn skriva till SQLite (`Microsoft.Data.Sqlite`) och visa senaste timmens snitt.
-5. **Spärra ett cert:** `security/revoke.sh security/generated gateway-cs`, starta om brokern och kolla att `gateway-cs` nekas medan de andra fortfarande ansluter. Tester: `.venv/bin/pytest security`.
+5. **Spärra ett cert:** `security/revoke.sh security/generated gateway-cs`, starta om brokern och kolla att `gateway-cs` nekas medan de andra fortfarande ansluter. Samma för OPC UA: `security/revoke.sh security/generated opcua/gateway-cs` och starta om maskinen (den läser CRL vid start). Tester: `.venv/bin/pytest security` och `dotnet test gateway-cs` (C#-testerna startar maskinen och behöver `.venv` eller `IOT_LAB_PYTHON=<python med asyncua>`, annars hoppar de över sig själva).
 6. **Ren nedstängning:** gatewayn ska publicera `offline` själv vid Ctrl+C (skillnad mot Last Will?).
 7. **Sparkplug B:** läs om standarden — vilka av gatewayns topics/payloads skulle se annorlunda ut?
 
