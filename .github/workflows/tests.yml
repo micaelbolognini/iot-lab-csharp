@@ -22,5 +22,11 @@ jobs:
       - name: Test monitor
         run: dotnet test monitor/monitor.sln
 
+      - name: Python with asyncua for the OPC UA integration tests
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install asyncua==2.1.0
+          echo "IOT_LAB_PYTHON=$RUNNER_TEMP/venv/bin/python" >> "$GITHUB_ENV"
+
       - name: Test gateway-cs
         run: dotnet test gateway-cs/gateway-cs.sln

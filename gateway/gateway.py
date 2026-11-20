@@ -15,12 +15,11 @@ import json
 import time
 
 import paho.mqtt.client as mqtt
-from asyncua import Client
 
 from edge import Aggregator, Buffer
 from mqtt_config import mqtt_settings
+from opcua_config import opcua_settings, secure_client
 
-OPC_URL = "opc.tcp://localhost:4840/iot-lab/"
 NAMESPACE = "urn:iot-lab:fabrik"
 BASE = "fabrik/hall1/maskin3"
 INTERVAL = 5
@@ -86,7 +85,7 @@ class Gateway:
         self.mqtt.connect_async(self.cfg.host, self.cfg.port, keepalive=10)
         self.mqtt.loop_start()
 
-        async with Client(OPC_URL) as opc:
+        async with await secure_client(opcua_settings()) as opc:
             self.ns = await opc.get_namespace_index(NAMESPACE)
             self.maskin = await opc.nodes.objects.get_child(
                 [f"{self.ns}:Fabrik", f"{self.ns}:Hall1", f"{self.ns}:Maskin3"])

@@ -15,7 +15,7 @@ var buffer = new MessageBuffer<string>(1000);
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 await using var machine = new OpcUaMachine();
-await machine.ConnectAsync("opc.tcp://localhost:4840/iot-lab/", cts.Token);
+await machine.ConnectAsync(OpcUaSettings.From(Environment.GetEnvironmentVariable), cts.Token);
 Console.WriteLine("OPC UA: ansluten till Maskin3");
 
 var settings = MqttSettings.From(Environment.GetEnvironmentVariable);

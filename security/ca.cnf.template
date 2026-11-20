@@ -23,3 +23,11 @@ extendedKeyUsage = serverAuth
 [device_ext]
 basicConstraints = CA:FALSE
 extendedKeyUsage = clientAuth
+
+[opcua_ext]
+basicConstraints = CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = URI:urn:iot-lab:$ENV::OPCUA_APP, DNS:localhost

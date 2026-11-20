@@ -10,21 +10,44 @@ Adressrymd:
 """
 import asyncio
 import logging
+import os
 import random
+from pathlib import Path
 
 from asyncua import Server, ua
 from asyncua.common.methods import uamethod
+from asyncua.crypto.truststore import TrustStore
+from asyncua.crypto.validator import CertificateValidator, CertificateValidatorOptions
 
 NAMESPACE = "urn:iot-lab:fabrik"
+APPLICATION_URI = "urn:iot-lab:machine"
+
+
+def security_env(env=os.environ):
+    for key in ("OPCUA_CERT", "OPCUA_KEY", "OPCUA_TRUST", "OPCUA_CRL"):
+        if not env.get(key):
+            raise ValueError(f"{key} must be set (encrypted OPC UA with client certificates is mandatory)")
+    return {k: Path(env[k]) for k in ("OPCUA_CERT", "OPCUA_KEY", "OPCUA_TRUST", "OPCUA_CRL")}
+
+
+async def secure(server, paths):
+    await server.set_application_uri(APPLICATION_URI)
+    await server.load_certificate(paths["OPCUA_CERT"], "pem")
+    await server.load_private_key(paths["OPCUA_KEY"], format="pem")
+    server.set_security_policy([ua.SecurityPolicyType.Basic256Sha256_SignAndEncrypt])
+    store = TrustStore([paths["OPCUA_TRUST"]], [paths["OPCUA_CRL"]])
+    await store.load()
+    options = CertificateValidatorOptions.TRUSTED_VALIDATION | CertificateValidatorOptions.PEER_CLIENT
+    server.set_certificate_validator(CertificateValidator(options, store).validate)
 
 
 async def main():
+    paths = security_env()
     server = Server()
     await server.init()
-    server.set_endpoint("opc.tcp://0.0.0.0:4840/iot-lab/")
+    server.set_endpoint(f"opc.tcp://0.0.0.0:{os.environ.get('OPCUA_PORT', '4840')}/iot-lab/")
     server.set_server_name("IoT-labb Maskin3")
-    # Labb: ingen kryptering. I produktion: Basic256Sha256 + certifikat.
-    server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+    await secure(server, paths)
 
     ns = await server.register_namespace(NAMESPACE)
     fabrik = await server.nodes.objects.add_folder(ns, "Fabrik")

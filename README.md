@@ -33,9 +33,13 @@ Prova:
 
 ## Steg 2 — OPC UA och Ignition
 
+Maskinen kräver krypterad OPC UA (`Basic256Sha256`, SignAndEncrypt) och klientcert utfärdade av labbets CA. Kör alltså `security/setup.sh` från avsnittet "Förberedelse" längre ner först.
+
 ```bash
 # Flik 4: starta maskinen
-.venv/bin/python machine/server.py
+D=$PWD/security/generated
+OPCUA_CERT=$D/opcua/machine.crt OPCUA_KEY=$D/opcua/machine.key \
+  OPCUA_TRUST=$D/opcua/trust OPCUA_CRL=$D/opcua/crl .venv/bin/python machine/server.py
 ```
 
 Maskinen är en OPC UA-server på `opc.tcp://localhost:4840/iot-lab/` med taggarna `Temperatur`, `Varvtal`, `Status` och `Antal`, plus de skrivbara `Borvarde` och `Kor`.
@@ -48,12 +52,12 @@ Koppla **Ignition** (Inductive Automation), ett stort grafiskt verktyg, mot den:
 
 Fundera: Varför är det värt något att klienten kan *browsa* och se typer, jämfört med MQTT där allt bara är bytes?
 
-## Förberedelse — mTLS för steg 3 och 4
+## Förberedelse — certifikat för steg 2–4
 
-Steg 1 och 2 kör utan TLS. Från steg 3 körs brokern med mTLS: varje enhet har eget klientcert, och brokern nekar allt annat. Skapa certen en gång:
+Steg 1 kör utan TLS. Från steg 2 kräver maskinen OPC UA med certifikat, och från steg 3 körs brokern med mTLS: varje enhet har eget klientcert, och brokern nekar allt annat. Skapa certen en gång:
 
 ```bash
-security/setup.sh security/generated   # CA, servercert, enhetscert, CRL, ACL, config
+security/setup.sh security/generated   # CA, servercert, enhetscert, OPC UA-cert, CRL, ACL, config
 ```
 
 Gör i varje flik som behöver prata med brokern:
@@ -73,6 +77,8 @@ mosquitto -c security/generated/mosquitto.conf
 
 Gatewayn och monitorn får sina cert via `MQTT_CA`, `MQTT_CERT` och `MQTT_KEY`. Ett cert per enhet finns i `security/generated/devices/`: `gateway-py`, `gateway-cs`, `gateway-java` och `monitor`.
 
+OPC UA-länken gateway → maskin har egna applikationscert i `security/generated/opcua/` (URI `urn:iot-lab:<namn>` i SAN). Python-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY`, `OPCUA_TRUST` (`opcua/trust`) och `OPCUA_CRL` (`opcua/crl`). C#-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY` och `OPCUA_TRUST` (`opcua/pki/trusted`, DER med CRL). Båda har valfria `OPCUA_URL` och `OPCUA_APP`. Maskinen litar bara på klientcert från CA:n och nekar spärrade (`security/revoke.sh generated opcua/gateway-cs`). Gatewayn kontrollerar i sin tur maskinens cert.
+
 ## Steg 3 — Edge-gatewayn (15 min)
 
 Broker med mTLS (flik 1) och maskin (flik 4) igång.
@@ -80,6 +86,8 @@ Broker med mTLS (flik 1) och maskin (flik 4) igång.
 ```bash
 msub -t 'fabrik/#' -v                                # flik 2
 MQTT_CERT=$D/devices/gateway-py.crt MQTT_KEY=$D/devices/gateway-py.key \
+  OPCUA_CERT=$D/opcua/gateway-py.crt OPCUA_KEY=$D/opcua/gateway-py.key \
+  OPCUA_TRUST=$D/opcua/trust OPCUA_CRL=$D/opcua/crl \
   .venv/bin/python gateway/gateway.py                # flik 3
 mpub -t fabrik/hall1/maskin3/kommando -m start       # någon flik
 ```
@@ -128,5 +136,6 @@ records ≈ DTO:er, `switch`-uttryck ≈ `match`, xUnit ≈ Pest.
 | Edge: aggregering, store-and-forward | steg 3 |
 | IT/OT, kommandon nedåt, sluten loop | steg 3, 4 |
 | TLS, egen CA, mTLS, klientcert per enhet | `security/` |
+| OPC UA Basic256Sha256, applikationscert, trust list | `security/`, `machine/server.py` |
 | ACL per enhet, spärra ett cert med CRL | `security/` |
 | Unified Namespace (topic-trädet fabrik/hall/maskin) | hela labbet |
