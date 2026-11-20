@@ -125,15 +125,17 @@ Maskinen värms upp, monitorn larmar och skickar `stop`. En sluten styrloop.
 Läs `Monitor/TelemetryRules.cs` (logiken) och `Program.cs` (MQTTnet). Jämför med Laravel:
 records ≈ DTO:er, `switch`-uttryck ≈ `match`, xUnit ≈ Pest.
 
-## Steg 5 — Egna övningar (skriv test först!)
+## Tester och spärrning
 
-1. **Hysteres:** monitorn skickar `stop` varje gång tills temperaturen sjunkit. Larma bara en gång tills den varit under gränsen igen. (Test i `TelemetryRulesTests.cs` först.)
-2. **Fler maskiner:** starta en Maskin4 i servern. Monitorn hanterar den utan ändring tack vare `fabrik/+/+/temperatur` — varför?
-3. **Deadband i gatewayn:** skicka `antal` högst en gång per sekund i stället för vid varje ändring.
-4. **Spara historik:** låt monitorn skriva till SQLite (`Microsoft.Data.Sqlite`) och visa senaste timmens snitt.
-5. **Spärra ett cert:** `security/revoke.sh security/generated gateway-cs`, starta om brokern och kolla att `gateway-cs` nekas medan de andra fortfarande ansluter. Samma för OPC UA: `security/revoke.sh security/generated opcua/gateway-cs` och starta om maskinen (den läser CRL vid start). Tester: `.venv/bin/pytest security` och `dotnet test gateway-cs` (C#-testerna startar maskinen och behöver `.venv` eller `IOT_LAB_PYTHON=<python med asyncua>`, annars hoppar de över sig själva).
-6. **Ren nedstängning:** gatewayn ska publicera `offline` själv vid Ctrl+C (skillnad mot Last Will?).
-7. **Sparkplug B:** läs om standarden — vilka av gatewayns topics/payloads skulle se annorlunda ut?
+```bash
+.venv/bin/pytest security gateway      # Python: broker, OPC UA, config
+dotnet test monitor
+dotnet test gateway-cs                 # startar maskinen, behöver .venv eller IOT_LAB_PYTHON=<python med asyncua>
+```
+
+C#-integrationstesterna hoppar över sig själva om ingen Python med asyncua hittas.
+
+Spärra ett cert med `security/revoke.sh security/generated gateway-cs` och starta om brokern. För OPC UA: `security/revoke.sh security/generated opcua/gateway-cs` och starta om maskinen, som läser CRL vid start.
 
 ## Lärdomar
 
