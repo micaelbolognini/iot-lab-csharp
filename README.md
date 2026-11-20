@@ -31,27 +31,6 @@ Prova:
 - **QoS:** `-q 0`, `-q 1`, `-q 2` och kör brokern med `-v` och se skillnaden i paket (PUBACK, PUBREC/PUBREL/PUBCOMP).
 - **Last Will:** `mosquitto_sub -t test -i x --will-topic dead/x --will-payload "borta"` och döda den med `kill -9`. Vad dyker upp på `dead/x`?
 
-## Steg 2 — OPC UA och Ignition
-
-Maskinen kräver krypterad OPC UA (`Basic256Sha256`, SignAndEncrypt) och klientcert utfärdade av labbets CA. Kör alltså `security/setup.sh` från avsnittet "Förberedelse" längre ner först.
-
-```bash
-# Flik 4: starta maskinen
-D=$PWD/security/generated
-OPCUA_CERT=$D/opcua/machine.crt OPCUA_KEY=$D/opcua/machine.key \
-  OPCUA_TRUST=$D/opcua/trust OPCUA_CRL=$D/opcua/crl .venv/bin/python machine/server.py
-```
-
-Maskinen är en OPC UA-server på `opc.tcp://localhost:4840/iot-lab/` med taggarna `Temperatur`, `Varvtal`, `Status` och `Antal`, plus de skrivbara `Borvarde` och `Kor`.
-
-Koppla **Ignition** (Inductive Automation), ett stort grafiskt verktyg, mot den:
-
-1. Logga in i Gateway på `localhost:8088` och lägg till en OPC UA-klientanslutning (Connections) mot adressen ovan.
-2. Browsa maskinens taggar i Designer.
-3. Bygg en vy med en av/på-knapp mot den skrivbara taggen `Kor` och ett överhettningsskydd på `Temperatur`.
-
-Fundera: Varför är det värt något att klienten kan *browsa* och se typer, jämfört med MQTT där allt bara är bytes?
-
 ## Förberedelse — certifikat för steg 2–4
 
 Steg 1 kör utan TLS. Från steg 2 kräver maskinen OPC UA med certifikat, och från steg 3 körs brokern med mTLS: varje enhet har eget klientcert, och brokern nekar allt annat. Skapa certen en gång:
@@ -79,6 +58,27 @@ Gatewayn och monitorn får sina cert via `MQTT_CA`, `MQTT_CERT` och `MQTT_KEY`. 
 
 OPC UA-länken gateway → maskin har egna applikationscert i `security/generated/opcua/` (URI `urn:iot-lab:<namn>` i SAN). Python-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY`, `OPCUA_TRUST` (`opcua/trust`) och `OPCUA_CRL` (`opcua/crl`). C#-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY` och `OPCUA_TRUST` (`opcua/pki/trusted`, DER med CRL). Båda har valfria `OPCUA_URL` och `OPCUA_APP`. Maskinen litar bara på klientcert från CA:n och nekar spärrade (`security/revoke.sh generated opcua/gateway-cs`). Gatewayn kontrollerar i sin tur maskinens cert.
 
+## Steg 2 — OPC UA och Ignition
+
+Maskinen kräver krypterad OPC UA (`Basic256Sha256`, SignAndEncrypt) och klientcert utfärdade av labbets CA. Certen kommer från `security/setup.sh` i avsnittet "Förberedelse" ovan.
+
+```bash
+# Flik 4: starta maskinen
+D=$PWD/security/generated
+OPCUA_CERT=$D/opcua/machine.crt OPCUA_KEY=$D/opcua/machine.key \
+  OPCUA_TRUST=$D/opcua/trust OPCUA_CRL=$D/opcua/crl .venv/bin/python machine/server.py
+```
+
+Maskinen är en OPC UA-server på `opc.tcp://localhost:4840/iot-lab/` med taggarna `Temperatur`, `Varvtal`, `Status` och `Antal`, plus de skrivbara `Borvarde` och `Kor`.
+
+Koppla **Ignition** (Inductive Automation), ett stort grafiskt verktyg, mot den. Det här steget är manuellt och inte testat: Ignition behöver ett klientcert utfärdat av labbets CA (`security/setup.sh` skapar inget åt Ignition) och måste lita på maskinens cert.
+
+1. Logga in i Gateway på `localhost:8088` och lägg till en OPC UA-klientanslutning (Connections) mot adressen ovan.
+2. Browsa maskinens taggar i Designer.
+3. Bygg en vy med en av/på-knapp mot den skrivbara taggen `Kor` och ett överhettningsskydd på `Temperatur`.
+
+Fundera: Varför är det värt något att klienten kan *browsa* och se typer, jämfört med MQTT där allt bara är bytes?
+
 ## Steg 3 — Edge-gatewayn (15 min)
 
 Broker med mTLS (flik 1) och maskin (flik 4) igång.
@@ -92,7 +92,7 @@ MQTT_CERT=$D/devices/gateway-py.crt MQTT_KEY=$D/devices/gateway-py.key \
 mpub -t fabrik/hall1/maskin3/kommando -m start       # någon flik
 ```
 
-C#-gatewayn gör samma jobb och kan köras i stället för Python-gatewayn:
+C#-gatewayn kan köras i stället för Python-gatewayn. Den skickar `temperatur` och `gateway` och tar emot `kommando`, men publicerar inte `status` och `antal`:
 
 ```bash
 MQTT_CERT=$D/devices/gateway-cs.crt MQTT_KEY=$D/devices/gateway-cs.key \
