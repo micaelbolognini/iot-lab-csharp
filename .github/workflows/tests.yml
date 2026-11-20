@@ -20,7 +20,11 @@ jobs:
           persist-credentials: false
 
       - name: Install mosquitto and protoc
-        run: sudo apt-get update && sudo apt-get install -y mosquitto protobuf-compiler
+        run: |
+          sudo apt-get update && sudo apt-get install -y mosquitto protobuf-compiler
+          # The packaged AppArmor profile only lets /usr/sbin/mosquitto read configs under /etc/mosquitto.
+          mkdir -p "$HOME/bin" && cp /usr/sbin/mosquitto "$HOME/bin/mosquitto"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
 
       - name: Install Python dependencies
         run: |
