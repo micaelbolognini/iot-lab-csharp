@@ -7,8 +7,6 @@
                          Last Will, kommandon   ◀────── "stop" ◀────── stop vid överhettning
 ```
 
-Java-versionen av gatewayen bor i ett eget repo: `../iot-gateway-java`.
-
 Öppna fyra terminalflikar, alla i repots rot.
 
 ---
@@ -33,24 +31,20 @@ Prova:
 - **QoS:** `-q 0`, `-q 1`, `-q 2` och kör brokern med `-v` och se skillnaden i paket (PUBACK, PUBREC/PUBREL/PUBCOMP).
 - **Last Will:** `mosquitto_sub -t test -i x --will-topic dead/x --will-payload "borta"` och döda den med `kill -9`. Vad dyker upp på `dead/x`?
 
-## Steg 2 — OPC UA: utforska maskinen (10 min)
+## Steg 2 — OPC UA och Ignition
 
 ```bash
 # Flik 4: starta maskinen
 .venv/bin/python machine/server.py
-
-# Browsa adressrymden (asyncua har CLI-verktyg)
-.venv/bin/uals -u opc.tcp://localhost:4840/iot-lab/ -l 3 -p 0:Objects
-.venv/bin/uals -u opc.tcp://localhost:4840/iot-lab/ -p 0:Objects,2:Fabrik,2:Hall1,2:Maskin3
-
-# Läs, skriv, anropa metod, prenumerera
-.venv/bin/uaread -u opc.tcp://localhost:4840/iot-lab/ -p 0:Objects,2:Fabrik,2:Hall1,2:Maskin3,2:Temperatur
-.venv/bin/uacall -u opc.tcp://localhost:4840/iot-lab/ -n "ns=2;i=3" -m "2:Start"   # Maskin3 = ns=2;i=3 (se uals)
-.venv/bin/uaread -u opc.tcp://localhost:4840/iot-lab/ -n "ns=2;i=6"                 # Status, nu Running
-.venv/bin/uasubscribe -u opc.tcp://localhost:4840/iot-lab/ -p 0:Objects,2:Fabrik,2:Hall1,2:Maskin3,2:Temperatur
 ```
 
-Grafiskt: ladda ner **UaExpert** (gratis, Unified Automation) och anslut till `opc.tcp://localhost:4840/iot-lab/`.
+Maskinen är en OPC UA-server på `opc.tcp://localhost:4840/iot-lab/` med taggarna `Temperatur`, `Varvtal`, `Status` och `Antal`, plus de skrivbara `Borvarde` och `Kor`.
+
+Koppla **Ignition** (Inductive Automation), ett stort grafiskt verktyg, mot den:
+
+1. Logga in i Gateway på `localhost:8088` och lägg till en OPC UA-klientanslutning (Connections) mot adressen ovan.
+2. Browsa maskinens taggar i Designer.
+3. Bygg en vy med en av/på-knapp mot den skrivbara taggen `Kor` och ett överhettningsskydd på `Temperatur`.
 
 Fundera: Varför är det värt något att klienten kan *browsa* och se typer, jämfört med MQTT där allt bara är bytes?
 
