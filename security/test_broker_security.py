@@ -22,11 +22,14 @@ def start_broker(out, port):
     conf.write_text((out / "mosquitto.conf").read_text().replace("8883", str(port)))
     proc = subprocess.Popen([MOSQUITTO, "-c", str(conf)], stderr=subprocess.PIPE)
     for _ in range(50):
+        if proc.poll() is not None:
+            raise RuntimeError(f"broker exited: {proc.stderr.read().decode()}")
         with socket.socket() as s:
             if s.connect_ex(("127.0.0.1", port)) == 0:
                 return proc
         time.sleep(0.1)
-    raise RuntimeError("broker did not start")
+    proc.kill()
+    raise RuntimeError(f"broker did not start: {proc.stderr.read().decode()}")
 
 
 def stop_broker(proc):
