@@ -56,7 +56,7 @@ mosquitto -c security/generated/mosquitto.conf
 
 Gatewayn och monitorn får sina cert via `MQTT_CA`, `MQTT_CERT` och `MQTT_KEY`. Ett cert per enhet finns i `security/generated/devices/`: `gateway-py`, `gateway-cs`, `monitor` och `sparkplug-bridge`.
 
-OPC UA-länken gateway → maskin har egna applikationscert i `security/generated/opcua/` (URI `urn:iot-lab:<namn>` i SAN). Python-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY`, `OPCUA_TRUST` (`opcua/trust`) och `OPCUA_CRL` (`opcua/crl`). C#-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY` och `OPCUA_TRUST` (`opcua/pki/trusted`, DER med CRL). Båda har valfria `OPCUA_URL` och `OPCUA_APP`. Maskinen litar bara på klientcert från CA:n och nekar spärrade (`security/revoke.sh generated opcua/gateway-cs`). Gatewayn kontrollerar i sin tur maskinens cert.
+OPC UA-länken gateway → maskin har egna applikationscert i `security/generated/opcua/` (URI `urn:iot-lab:<namn>` i SAN). Python-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY`, `OPCUA_TRUST` (`opcua/trust`) och `OPCUA_CRL` (`opcua/crl`). C#-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY` och `OPCUA_TRUST` (`opcua/pki/trusted`, DER med CRL). Båda har valfria `OPCUA_URL` och `OPCUA_APP`. Maskinen litar bara på klientcert från CA:n och nekar spärrade (`security/revoke.sh generated opcua/gateway-cs`). Gatewayn kontrollerar i sin tur maskinens cert, inklusive spärrlistan (Python och C#).
 
 ## Steg 2 — OPC UA och Ignition
 

@@ -7,7 +7,8 @@ import time
 from pathlib import Path
 
 import pytest
-from asyncua import Client
+from asyncua import Client, ua
+from asyncua.ua.uaerrors import BadCertificateRevoked, BadCertificateUntrusted
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "gateway"))
 import opcua_config  # noqa: E402
@@ -95,7 +96,7 @@ def test_unsecured_connection_is_refused(plant):
         async with Client(URL) as client:
             await client.nodes.objects.get_child(TEMPERATURE)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ua.UaError, match="No matching endpoints"):
         asyncio.run(go())
 
 
@@ -106,7 +107,7 @@ def test_client_from_foreign_ca_is_refused(plant, tmp_path):
         client = await secure_client(plant, client_pki=foreign)
         await read_temperature(client)
 
-    with pytest.raises(Exception):
+    with pytest.raises(BadCertificateUntrusted):
         asyncio.run(go())
 
 
@@ -119,7 +120,7 @@ def test_revoked_client_is_refused(tmp_path):
             client = await secure_client(pki, device="gateway-cs", url=URL.replace(str(PORT), str(PORT + 1)))
             await read_temperature(client)
 
-        with pytest.raises(Exception):
+        with pytest.raises(BadCertificateRevoked):
             asyncio.run(go())
     finally:
         stop(proc)

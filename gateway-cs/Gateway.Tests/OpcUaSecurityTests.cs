@@ -107,6 +107,20 @@ public class OpcUaSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task Refuses_a_machine_whose_certificate_was_revoked()
+    {
+        var python = Python(Repo());
+        if (python is null) return;
+        var pki = MakePki("pki");
+        Run(Path.Combine(Repo(), "security", "revoke.sh"), pki, "opcua/machine");
+        StartMachine(pki, python, 14874);
+
+        var error = await Assert.ThrowsAsync<Opc.Ua.ServiceResultException>(() =>
+            ReadTemperature(Settings(pki, pki, 14874), Path.Combine(work, "client-pki")));
+        Assert.Equal(Opc.Ua.StatusCodes.BadCertificateRevoked, error.StatusCode);
+    }
+
+    [Fact]
     public async Task Refuses_a_machine_whose_certificate_comes_from_another_ca()
     {
         var python = Python(Repo());
@@ -122,7 +136,8 @@ public class OpcUaSecurityTests : IDisposable
         Directory.CreateSymbolicLink(Path.Combine(rogue, "opcua", "crl"), Path.Combine(pki, "opcua", "crl"));
         StartMachine(rogue, python, 14872);
 
-        await Assert.ThrowsAnyAsync<Exception>(() =>
+        var error = await Assert.ThrowsAsync<Opc.Ua.ServiceResultException>(() =>
             ReadTemperature(Settings(pki, pki, 14872), Path.Combine(work, "client-pki")));
+        Assert.Equal(Opc.Ua.StatusCodes.BadCertificateChainIncomplete, error.StatusCode);
     }
 }

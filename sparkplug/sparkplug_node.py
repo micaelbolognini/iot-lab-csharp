@@ -1,7 +1,4 @@
-"""Sparkplug B edge node for the lab: translates the UNS topics (fabrik/hall1/maskin3/...) to Sparkplug.
-
-Pure logic, no network: every method returns the messages to publish as (topic, payload, retain).
-"""
+"""Sparkplug edge node logic; methods return the messages to publish as (topic, payload, retain)."""
 import json
 import time
 

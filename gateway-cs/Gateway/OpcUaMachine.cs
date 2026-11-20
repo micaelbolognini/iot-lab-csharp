@@ -5,10 +5,6 @@ using Opc.Ua.Configuration;
 
 namespace Gateway;
 
-/// <summary>
-/// OPC UA-klient mot Maskin3 i machine/server.py.
-/// Noderna slås upp på namn (Objects/Fabrik/Hall1/Maskin3/...) i stället för numeriska id:n som skiftar när servern får nya noder.
-/// </summary>
 public sealed class OpcUaMachine : IAsyncDisposable
 {
     private const string Namespace = "urn:iot-lab:fabrik";
@@ -45,6 +41,7 @@ public sealed class OpcUaMachine : IAsyncDisposable
         await ResolveNodesAsync(ct);
     }
 
+    // By name: numeric ids shift whenever the server gains nodes.
     private async Task ResolveNodesAsync(CancellationToken ct)
     {
         var ns = (ushort)session!.NamespaceUris.GetIndex(Namespace);

@@ -1,8 +1,4 @@
-"""Sparkplug B bridge: reads the UNS topics from the gateway and republishes them as a Sparkplug edge node.
-
-  fabrik/hall1/maskin3/{temperatur,status,antal,gateway}  ->  spBv1.0/fabrik/{NBIRTH,DBIRTH,DDATA,DDEATH,NDEATH}/...
-  spBv1.0/fabrik/{NCMD,DCMD}/...                          ->  fabrik/hall1/maskin3/kommando
-"""
+"""Republishes the gateway's UNS topics as a Sparkplug edge node, and turns NCMD/DCMD into UNS commands."""
 import sys
 from pathlib import Path
 

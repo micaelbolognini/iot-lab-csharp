@@ -1,7 +1,4 @@
-"""Sparkplug B payload as protobuf wire format, without a protobuf dependency.
-
-Covers the subset in sparkplug_b.proto. Field numbers follow the Sparkplug spec.
-"""
+"""Sparkplug payload as protobuf wire format (the subset in sparkplug_b.proto), without a protobuf dependency."""
 import struct
 
 INT32, INT64, DOUBLE, BOOLEAN, STRING = 3, 4, 10, 11, 12
