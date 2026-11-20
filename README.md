@@ -7,6 +7,8 @@
                          Last Will, kommandon   ◀────── "stop" ◀────── stop vid överhettning
 ```
 
+Python-delarna körs i en venv: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`. Du behöver också `mosquitto`, `openssl` och .NET 8.
+
 Öppna fyra terminalflikar, alla i repots rot.
 
 ---

@@ -10,6 +10,26 @@ permissions:
   contents: read
 
 jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mosquitto and protoc
+        run: sudo apt-get update && sudo apt-get install -y mosquitto protobuf-compiler
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Test security, gateway and sparkplug
+        run: .venv/bin/python -m pytest security gateway sparkplug
+
   dotnet:
     runs-on: ubuntu-latest
 
@@ -25,7 +45,7 @@ jobs:
       - name: Python with asyncua for the OPC UA integration tests
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install asyncua==2.1.0
+          "$RUNNER_TEMP/venv/bin/pip" install -r requirements.txt
           echo "IOT_LAB_PYTHON=$RUNNER_TEMP/venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Test gateway-cs
