@@ -93,6 +93,20 @@ public class OpcUaSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task Start_and_stop_reach_the_machine_methods()
+    {
+        var python = Python(Repo());
+        if (python is null) return;
+        var pki = MakePki("pki");
+        StartMachine(pki, python, 14873);
+        await using var machine = new OpcUaMachine();
+        await machine.ConnectAsync(Settings(pki, pki, 14873), CancellationToken.None, Path.Combine(work, "client-pki"));
+
+        await machine.StartAsync(CancellationToken.None);
+        await machine.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
     public async Task Refuses_a_machine_whose_certificate_comes_from_another_ca()
     {
         var python = Python(Repo());

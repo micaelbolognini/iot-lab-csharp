@@ -7,14 +7,16 @@ namespace Gateway;
 
 /// <summary>
 /// OPC UA-klient mot Maskin3 i machine/server.py.
-/// Nod-id:n kommer från uals: Maskin3 = ns=2;i=3, Temperatur = i=4, Start = i=10, Stop = i=12.
+/// Noderna slås upp på namn (Objects/Fabrik/Hall1/Maskin3/...) i stället för numeriska id:n som skiftar när servern får nya noder.
 /// </summary>
 public sealed class OpcUaMachine : IAsyncDisposable
 {
-    private static readonly NodeId Machine = new(3u, 2);
-    private static readonly NodeId Temperature = new(4u, 2);
-    private static readonly NodeId Start = new(10u, 2);
-    private static readonly NodeId Stop = new(12u, 2);
+    private const string Namespace = "urn:iot-lab:fabrik";
+
+    private NodeId machine = NodeId.Null;
+    private NodeId temperature = NodeId.Null;
+    private NodeId start = NodeId.Null;
+    private NodeId stop = NodeId.Null;
 
     private readonly ITelemetryContext telemetry = DefaultTelemetry.Create(_ => { });
     private ISession? session;
@@ -40,6 +42,32 @@ public sealed class OpcUaMachine : IAsyncDisposable
             throw new InvalidOperationException("The machine offers no Basic256Sha256 SignAndEncrypt endpoint");
         session = await new DefaultSessionFactory(telemetry).CreateAsync(
             config, new ConfiguredEndpoint(null!, endpoint), false, settings.App, 60_000, new UserIdentity(), default, ct);
+        await ResolveNodesAsync(ct);
+    }
+
+    private async Task ResolveNodesAsync(CancellationToken ct)
+    {
+        var ns = (ushort)session!.NamespaceUris.GetIndex(Namespace);
+        var names = new[] { new[] { "Maskin3" }, new[] { "Maskin3", "Temperatur" }, new[] { "Maskin3", "Start" }, new[] { "Maskin3", "Stop" } };
+        ArrayOf<BrowsePath> paths = names.Select(tail => new BrowsePath
+        {
+            StartingNode = ObjectIds.ObjectsFolder,
+            RelativePath = new RelativePath
+            {
+                Elements = new[] { "Fabrik", "Hall1" }.Concat(tail).Select(name => new RelativePathElement
+                {
+                    ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                    IsInverse = false,
+                    IncludeSubtypes = true,
+                    TargetName = new QualifiedName(name, ns),
+                }).ToArray(),
+            },
+        }).ToArray();
+        var response = await session.TranslateBrowsePathsToNodeIdsAsync(null, paths, ct);
+        var ids = response.Results.ToArray().Select(r => StatusCode.IsGood(r.StatusCode) && r.Targets.Count > 0
+            ? ExpandedNodeId.ToNodeId(r.Targets[0].TargetId, session.NamespaceUris)
+            : throw new InvalidOperationException($"Node not found on the machine ({r.StatusCode})")).ToArray();
+        (machine, temperature, start, stop) = (ids[0], ids[1], ids[2], ids[3]);
     }
 
     // The stack reads its identity and trust from a directory store, so lay the issued PEM files out there.
@@ -71,7 +99,7 @@ public sealed class OpcUaMachine : IAsyncDisposable
             LifetimeCount = 100,
             SequentialPublishing = true, // en notifiering i taget, i ordning
         });
-        var item = new MonitoredItem(telemetry, new MonitoredItemOptions { StartNodeId = Temperature, SamplingInterval = 500 });
+        var item = new MonitoredItem(telemetry, new MonitoredItemOptions { StartNodeId = temperature, SamplingInterval = 500 });
         item.Notification += (_, e) =>
         {
             if (e.NotificationValue is MonitoredItemNotification n
@@ -83,8 +111,8 @@ public sealed class OpcUaMachine : IAsyncDisposable
         await subscription.CreateAsync(ct);
     }
 
-    public Task StartAsync(CancellationToken ct) => session!.CallAsync(Machine, Start, ct);
-    public Task StopAsync(CancellationToken ct) => session!.CallAsync(Machine, Stop, ct);
+    public Task StartAsync(CancellationToken ct) => session!.CallAsync(machine, start, ct);
+    public Task StopAsync(CancellationToken ct) => session!.CallAsync(machine, stop, ct);
 
     public async ValueTask DisposeAsync()
     {
