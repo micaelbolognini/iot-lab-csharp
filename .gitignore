@@ -1,0 +1,9 @@
+security/generated/
+bin/
+obj/
+target/
+.venv/
+.idea/
+__pycache__/
+.pytest_cache/
+.DS_Store

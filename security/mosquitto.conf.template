@@ -1,0 +1,9 @@
+listener 8883
+cafile @DIR@/ca.crt
+certfile @DIR@/server.crt
+keyfile @DIR@/server.key
+require_certificate true
+use_identity_as_username true
+crlfile @DIR@/crl.pem
+allow_anonymous false
+acl_file @DIR@/acl
