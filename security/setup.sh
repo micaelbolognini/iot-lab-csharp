@@ -3,7 +3,7 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 OUT=${1:?usage: setup.sh OUTDIR}
-GATEWAYS=(gateway-py gateway-cs gateway-java)
+GATEWAYS=(gateway-py gateway-cs)
 MONITORS=(monitor)
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd); cd "$OUT"
 umask 077

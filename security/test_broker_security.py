@@ -12,7 +12,7 @@ HERE = Path(__file__).parent
 MOSQUITTO = shutil.which("mosquitto")
 TOPIC_TEMP = "fabrik/hall1/maskin3/temperatur"
 TOPIC_CMD = "fabrik/hall1/maskin3/kommando"
-DEVICES = ["gateway-py", "gateway-cs", "gateway-java", "monitor"]
+DEVICES = ["gateway-py", "gateway-cs", "monitor"]
 
 
 def start_broker(out, port):
@@ -142,7 +142,7 @@ def publish_as(out, port, device, topic, payload):
     c.disconnect()
 
 
-@pytest.mark.parametrize("gateway", ["gateway-py", "gateway-cs", "gateway-java"])
+@pytest.mark.parametrize("gateway", ["gateway-py", "gateway-cs"])
 def test_gateway_may_publish_telemetry_monitor_receives(broker, gateway):
     out, port = broker
     sub, got = collect(out, port, "monitor", "fabrik/#")
@@ -152,7 +152,7 @@ def test_gateway_may_publish_telemetry_monitor_receives(broker, gateway):
     assert f"21.5-{gateway}" in got
 
 
-@pytest.mark.parametrize("gateway", ["gateway-py", "gateway-cs", "gateway-java"])
+@pytest.mark.parametrize("gateway", ["gateway-py", "gateway-cs"])
 def test_gateway_may_not_publish_commands(broker, gateway):
     out, port = broker
     sub, got = collect(out, port, "monitor", "fabrik/#")
@@ -187,7 +187,7 @@ def test_revoked_certificate_is_refused_while_others_still_connect(tmp_path):
     proc = start_broker(out, 18884)
     try:
         assert refused(client(out, "gateway-cs"), 18884)
-        for device in ["gateway-py", "gateway-java", "monitor"]:
+        for device in ["gateway-py", "monitor"]:
             rc = connect_rc(client(out, device), 18884)
             assert rc is not None and not rc.is_failure
     finally:

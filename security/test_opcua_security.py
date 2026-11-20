@@ -85,7 +85,7 @@ def test_trusted_client_reads_over_encrypted_channel(plant):
 
 
 def test_every_gateway_has_an_opcua_identity(plant):
-    for device in ("gateway-py", "gateway-cs", "gateway-java"):
+    for device in ("gateway-py", "gateway-cs"):
         assert (plant / "opcua" / f"{device}.crt").exists()
         assert (plant / "opcua" / f"{device}.key").exists()
 

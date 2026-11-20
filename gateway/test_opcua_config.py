@@ -18,8 +18,8 @@ def test_defaults_to_local_machine_and_python_gateway_identity():
 
 
 def test_url_and_app_can_be_overridden():
-    s = opcua_settings({**ENV, "OPCUA_URL": "opc.tcp://plc:4840/x/", "OPCUA_APP": "gateway-java"})
-    assert (s.url, s.app) == ("opc.tcp://plc:4840/x/", "gateway-java")
+    s = opcua_settings({**ENV, "OPCUA_URL": "opc.tcp://plc:4840/x/", "OPCUA_APP": "gateway-x"})
+    assert (s.url, s.app) == ("opc.tcp://plc:4840/x/", "gateway-x")
 
 
 @pytest.mark.parametrize("missing", sorted(ENV))
