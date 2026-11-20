@@ -5,6 +5,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 OUT=${1:?usage: setup.sh OUTDIR}
 GATEWAYS=(gateway-py gateway-cs)
 MONITORS=(monitor)
+BRIDGES=(sparkplug-bridge)
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd); cd "$OUT"
 umask 077
 export OPCUA_APP=unused # openssl expands $ENV::OPCUA_APP while reading the whole config
@@ -25,7 +26,7 @@ openssl ca -batch -config ca.cnf -cert ca.crt -keyfile ca.key -extensions server
   -in server.csr -out server.crt -notext 2>/dev/null
 rm -f server.csr
 
-for name in "${GATEWAYS[@]}" "${MONITORS[@]}"; do
+for name in "${GATEWAYS[@]}" "${MONITORS[@]}" "${BRIDGES[@]}"; do
   openssl genrsa -out "devices/$name.key" 2048 2>/dev/null
   openssl req -new -key "devices/$name.key" -subj "/CN=$name" -out "devices/$name.csr"
   openssl ca -batch -config ca.cnf -cert ca.crt -keyfile ca.key -extensions device_ext \
@@ -44,8 +45,8 @@ done
 openssl ca -config ca.cnf -cert ca.crt -keyfile ca.key -gencrl -out crl.pem 2>/dev/null
 
 # asyncua's TrustStore scans directories for *.pem
-ln -s ../../ca.crt opcua/trust/ca.pem
-ln -s ../../crl.pem opcua/crl/crl.pem
+ln -sf ../../ca.crt opcua/trust/ca.pem
+ln -sf ../../crl.pem opcua/crl/crl.pem
 # the OPC Foundation stack (C#) wants DER in certs/ and crl/
 openssl x509 -in ca.crt -outform der -out opcua/pki/trusted/certs/ca.der
 openssl crl -in crl.pem -outform der -out opcua/pki/trusted/crl/ca.crl
@@ -67,6 +68,28 @@ for name in "${MONITORS[@]}"; do
 user $name
 topic read fabrik/#
 topic write fabrik/+/+/kommando
+topic read spBv1.0/#
+topic write spBv1.0/+/NCMD/+
+topic write spBv1.0/+/DCMD/+/+
+
+ACL
+done
+
+for name in "${BRIDGES[@]}"; do
+  cat >> acl <<ACL
+user $name
+topic read fabrik/+/+/temperatur
+topic read fabrik/+/+/status
+topic read fabrik/+/+/antal
+topic read fabrik/+/+/gateway
+topic write fabrik/+/+/kommando
+topic write spBv1.0/+/NBIRTH/+
+topic write spBv1.0/+/NDEATH/+
+topic write spBv1.0/+/DBIRTH/+/+
+topic write spBv1.0/+/DDEATH/+/+
+topic write spBv1.0/+/DDATA/+/+
+topic read spBv1.0/+/NCMD/+
+topic read spBv1.0/+/DCMD/+/+
 
 ACL
 done

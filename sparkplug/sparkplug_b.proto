@@ -1,0 +1,27 @@
+// Subset of the Eclipse Tahu sparkplug_b.proto (Sparkplug B 3.0): only the fields this lab uses.
+// Field numbers match the spec, so payloads decode in any Sparkplug host.
+syntax = "proto2";
+
+package org.eclipse.tahu.protobuf;
+
+message Payload {
+  message Metric {
+    optional string name = 1;
+    optional uint64 alias = 2;
+    optional uint64 timestamp = 3;
+    optional uint32 datatype = 4;
+    optional bool is_null = 7;
+    oneof value {
+      uint32 int_value = 10;
+      uint64 long_value = 11;
+      float float_value = 12;
+      double double_value = 13;
+      bool boolean_value = 14;
+      string string_value = 15;
+    }
+  }
+
+  optional uint64 timestamp = 1;
+  repeated Metric metrics = 2;
+  optional uint64 seq = 3;
+}

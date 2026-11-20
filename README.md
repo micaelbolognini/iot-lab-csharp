@@ -54,7 +54,7 @@ msub() { mosquitto_sub -p 8883 --cafile "$D/ca.crt" --cert "$D/devices/monitor.c
 mosquitto -c security/generated/mosquitto.conf
 ```
 
-Gatewayn och monitorn får sina cert via `MQTT_CA`, `MQTT_CERT` och `MQTT_KEY`. Ett cert per enhet finns i `security/generated/devices/`: `gateway-py`, `gateway-cs` och `monitor`.
+Gatewayn och monitorn får sina cert via `MQTT_CA`, `MQTT_CERT` och `MQTT_KEY`. Ett cert per enhet finns i `security/generated/devices/`: `gateway-py`, `gateway-cs`, `monitor` och `sparkplug-bridge`.
 
 OPC UA-länken gateway → maskin har egna applikationscert i `security/generated/opcua/` (URI `urn:iot-lab:<namn>` i SAN). Python-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY`, `OPCUA_TRUST` (`opcua/trust`) och `OPCUA_CRL` (`opcua/crl`). C#-gatewayn läser `OPCUA_CERT`, `OPCUA_KEY` och `OPCUA_TRUST` (`opcua/pki/trusted`, DER med CRL). Båda har valfria `OPCUA_URL` och `OPCUA_APP`. Maskinen litar bara på klientcert från CA:n och nekar spärrade (`security/revoke.sh generated opcua/gateway-cs`). Gatewayn kontrollerar i sin tur maskinens cert.
 
@@ -111,6 +111,28 @@ Experiment:
 2. **Gatewayn dör:** Ctrl+C i flik 3. Flik 2 visar `gateway offline` — brokern skickade Last Will.
 3. **Kommandon nedåt:** `-m stop`. Moln → MQTT → gateway → OPC UA-metod → maskin.
 
+## Steg 3b — Sparkplug B (15 min)
+
+Topic-trädet `fabrik/hall1/maskin3/...` är en **Unified Namespace** med JSON. **Sparkplug B** är industrins standard ovanpå MQTT: fasta topics (`spBv1.0/<grupp>/<meddelandetyp>/<nod>/<enhet>`), protobuf-payload, och en livscykel där noden *föds* (`NBIRTH`/`DBIRTH` med alla metrics och värden) och *dör* (`NDEATH` via Last Will, `DDEATH`). Bryggan `sparkplug/bridge.py` är en Sparkplug-nod som översätter gatewayns UNS-topics, så gatewayn och monitorn är oförändrade. Gatewayn och maskinen från steg 3 ska vara igång.
+
+```bash
+MQTT_CERT=$D/devices/sparkplug-bridge.crt MQTT_KEY=$D/devices/sparkplug-bridge.key \
+  .venv/bin/python sparkplug/bridge.py                 # flik 5
+MQTT_CERT=$D/devices/monitor.crt MQTT_KEY=$D/devices/monitor.key \
+  .venv/bin/python sparkplug/dump.py                   # flik 6: payloaden är binär, dump skriver ut den som JSON
+MQTT_CERT=$D/devices/monitor.crt MQTT_KEY=$D/devices/monitor.key \
+  .venv/bin/python sparkplug/command.py start          # någon flik: start, stop eller rebirth
+```
+
+Se i flik 6:
+- `NBIRTH` (`seq` 0, `bdSeq`) följt av `DBIRTH` med `Temperatur`, `Status`, `Antal` och `Kor`.
+- `DDATA` med bara de metrics som ändrats. `seq` räknar upp till 255 och börjar om, så en host ser om något tappats.
+- `command.py start` skickar ett `DCMD`. Det blir `start` på UNS-topicen, vidare till OPC UA-metoden, och maskinen går.
+- Stoppa gatewayn: `DDEATH`. Döda bryggan med `kill -9`: brokern skickar `NDEATH` med samma `bdSeq` som `NBIRTH`.
+- `command.py rebirth` får noden att annonsera sig igen.
+
+Payloaden kodas för hand i `sparkplug/sparkplug_payload.py` (protobuf-formatet är litet) och testas mot `protoc` med `sparkplug_b.proto`, så en riktig Sparkplug-host kan läsa den.
+
 ## Steg 4 — C#-konsumenten (15 min)
 
 ```bash
@@ -128,7 +150,7 @@ records ≈ DTO:er, `switch`-uttryck ≈ `match`, xUnit ≈ Pest.
 ## Tester och spärrning
 
 ```bash
-.venv/bin/pytest security gateway      # Python: broker, OPC UA, config
+.venv/bin/pytest security gateway sparkplug   # Python: broker, OPC UA, config, Sparkplug
 dotnet test monitor
 dotnet test gateway-cs                 # startar maskinen, behöver .venv eller IOT_LAB_PYTHON=<python med asyncua>
 ```
@@ -150,3 +172,4 @@ Spärra ett cert med `security/revoke.sh security/generated gateway-cs` och star
 | OPC UA Basic256Sha256, applikationscert, trust list | `security/`, `machine/server.py` |
 | ACL per enhet, spärra ett cert med CRL | `security/` |
 | Unified Namespace (topic-trädet fabrik/hall/maskin) | hela labbet |
+| Sparkplug B: birth/death, seq/bdSeq, protobuf, kommandon | steg 3b, `sparkplug/` |

@@ -12,7 +12,7 @@ HERE = Path(__file__).parent
 MOSQUITTO = shutil.which("mosquitto")
 TOPIC_TEMP = "fabrik/hall1/maskin3/temperatur"
 TOPIC_CMD = "fabrik/hall1/maskin3/kommando"
-DEVICES = ["gateway-py", "gateway-cs", "monitor"]
+DEVICES = ["gateway-py", "gateway-cs", "monitor", "sparkplug-bridge"]
 
 
 def start_broker(out, port):
